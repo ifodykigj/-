@@ -1,0 +1,580 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>صانع الفيديوهات القرآنية - النسخة المستقرة</title>
+    <link href="https://fonts.googleapis.com/css2?family=Amiri:quran&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+
+        body {
+            display: flex;
+            height: 100vh;
+            background-color: #121212;
+            color: #fff;
+            overflow: hidden;
+        }
+
+        #control-panel {
+            width: 350px;
+            background-color: #1e1e1e;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+            box-shadow: 2px 0 10px rgba(0,0,0,0.5);
+            z-index: 10;
+            overflow-y: auto;
+        }
+
+        h2 {
+            font-size: 1.2rem;
+            margin-bottom: 10px;
+            color: #4cd137;
+            text-align: center;
+        }
+
+        .form-group {
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+        }
+
+        label {
+            font-size: 0.9rem;
+            color: #ccc;
+        }
+
+        select, input, button {
+            padding: 10px;
+            background-color: #2f3640;
+            border: 1px solid #444;
+            color: white;
+            border-radius: 5px;
+            font-size: 0.95rem;
+            outline: none;
+        }
+
+        select:focus, input:focus {
+            border-color: #4cd137;
+        }
+
+        #generate-btn {
+            background-color: #4cd137;
+            color: #121212;
+            font-weight: bold;
+            cursor: pointer;
+            transition: 0.3s;
+            margin-top: 10px;
+        }
+
+        #generate-btn:hover {
+            background-color: #44bd32;
+        }
+
+        #preview-container {
+            flex: 1;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            background-color: #0d0d0d;
+            position: relative;
+        }
+
+        #video-box {
+            width: 360px;
+            height: 640px;
+            position: relative;
+            background-color: #111;
+            overflow: hidden;
+            box-shadow: 0 0 30px rgba(0,0,0,0.8);
+            border-radius: 15px;
+            display: flex;
+            flex-direction: column;
+        }
+
+        #bg-canvas {
+            width: 100%;
+            height: 100%;
+            position: absolute;
+            top: 0;
+            left: 0;
+            z-index: 1;
+        }
+
+        .overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(to bottom, rgba(0,0,0,0.35), rgba(0,0,0,0.7));
+            z-index: 2;
+        }
+
+        #quran-text-container {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: calc(100% - 60px);
+            z-index: 3;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 30px;
+            text-align: center;
+            overflow-y: auto;
+        }
+
+        #quran-paragraph {
+            font-family: 'Amiri', serif;
+            font-size: 1.8rem;
+            line-height: 3.8rem;
+            color: #ffffff;
+            text-shadow: 0 3px 15px rgba(0,0,0,1), 0 1px 5px rgba(0,0,0,0.8);
+            direction: rtl;
+        }
+
+        .active-ayah {
+            color: #4cd137 !important;
+            text-shadow: 0 0 20px rgba(76, 209, 55, 0.8) !important;
+            font-weight: bold;
+            transition: all 0.3s ease;
+        }
+
+        .normal-ayah {
+            color: #ffffff;
+            transition: all 0.3s ease;
+            opacity: 0.85;
+        }
+
+        #custom-controls {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            width: 100%;
+            height: 60px;
+            background: rgba(0, 0, 0, 0.85);
+            z-index: 4;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            padding: 0 15px;
+            border-top: 1px solid rgba(255,255,255,0.1);
+        }
+
+        .timeline-container {
+            width: 100%;
+            display: flex;
+            align-items: center;
+            margin-bottom: 5px;
+        }
+
+        .seek-bar {
+            width: 100%;
+            height: 5px;
+            background: #444;
+            border-radius: 5px;
+            outline: none;
+            cursor: pointer;
+            -webkit-appearance: none;
+            appearance: none;
+        }
+
+        .seek-bar::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            background: #4cd137;
+            cursor: pointer;
+            box-shadow: 0 0 8px #4cd137;
+        }
+
+        .controls-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            width: 100%;
+        }
+
+        .play-btn {
+            background: none;
+            border: none;
+            color: white;
+            font-size: 1.2rem;
+            cursor: pointer;
+        }
+
+        .play-btn:hover {
+            color: #4cd137;
+        }
+
+        .time-display {
+            font-size: 0.85rem;
+            color: #bbb;
+            font-family: monospace;
+        }
+
+        #status-msg {
+            font-size: 1rem;
+            color: #eccc68;
+            text-align: center;
+            margin-top: 5px;
+        }
+    </style>
+</head>
+<body>
+
+    <div id="control-panel">
+        <h2>صانع الفيديوهات القرآنية</h2>
+        
+        <div class="form-group">
+            <label>اختر السورة:</label>
+            <select id="surah-select"></select>
+        </div>
+
+        <div class="form-group">
+            <label>من آية:</label>
+            <input type="number" id="verse-from" value="1" min="1">
+        </div>
+
+        <div class="form-group">
+            <label>إلى آية:</label>
+            <input type="number" id="verse-to" value="3" min="1">
+        </div>
+
+        <div class="form-group">
+            <label>اختر القارئ:</label>
+            <select id="reciter-select">
+                <option value="Alafasy_128kbps">مشاري راشد العفاسي</option>
+                <option value="Abdul_Basit_Murattal_192kbps">عبد الباسط عبد الصمد (مرتل)</option>
+                <option value="Minshawy_Murattal_128kbps">محمد صديق المنشاوي</option>
+                <option value="Husary_128kbps">محمود خليل الحصري</option>
+            </select>
+        </div>
+
+        <div class="form-group">
+            <label>الخلفية الحية واللانهائية:</label>
+            <select id="background-effect-select">
+                <option value="space">فضاء روحي عميق (سديم متحرك)</option>
+                <option value="particles">جزيئات نور ذهبية عائمة</option>
+                <option value="waves">أمواج متحركة هادئة وانسيابية</option>
+            </select>
+        </div>
+
+        <button id="generate-btn">توليد وتشغيل المقطع 🎬</button>
+        <div id="status-msg">اضغط توليد للبدء</div>
+    </div>
+
+    <div id="preview-container">
+        <div id="video-box">
+            <canvas id="bg-canvas"></canvas>
+            <div class="overlay"></div>
+            
+            <div id="quran-text-container">
+                <p id="quran-paragraph">اختر الإعدادات واضغط على توليد لبدء تجربة المشغل الحي اللانهائي...</p>
+            </div>
+
+            <div id="custom-controls">
+                <div class="timeline-container">
+                    <input type="range" class="seek-bar" id="seek-bar" value="0" min="0" max="100">
+                </div>
+                <div class="controls-row">
+                    <button class="play-btn" id="play-pause-btn"><i class="fas fa-play"></i></button>
+                    <div class="time-display" id="time-display">00:00 / 00:00</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <audio id="core-audio-player"></audio>
+
+    <script>
+        const surahsAr = ["الفاتحة","البقرة","آل عمران","النساء","المائدة","الأنعام","الأعراف","الأنفال","التوبة","يونس","هود","يوسف","الرعد","إبراهيم","الحجر","النحل","الإسراء","الكهف","مريم","طه","الأنبياء","الحج","المؤمنون","النور","الفرقان","الشعراء","النمل","القصص","العنكبوت","الروم","لقمان","السجدة","الأحزاب","سبأ","فاطر","يس","الصافات","ص","الزمر","غافر","فصلت","الشورى","الزخرف","الدخان","الجاثية","الأحقاف","محمد","الفتح","الحجرات","ق","الذاريات","الطور","النجم","القمر","الرحمن","الواقعة","الحديد","المجادلة","الحشر","الممتحنة","الصف","الجمعة","المنافقون","التغابن","الطلاق","التحريم","الملك","القلم","الحاقة","المعارج","نوح","الجن","المزمل","المدثر","القيامة","الإنسان","المرسلات","النبأ","النازحات","عبس","التكوير","الانفطار","المطففين","الانشقاق","البروج","الطارق","الأعلى","الغاشية","الفجر","البلد","الشمس","الليل","الضحى","الشرح","التين","العلق","القدر","البينة","الزلزلة","العاديات","القارعة","التكاثر","العصر","الهمزة","الفيل","قريش","الماعون","الكوثر","الكافرون","النصر","المسد","الإخلاص","الفلق","الناس"];
+        
+        function initSurahList() {
+            const select = document.getElementById('surah-select');
+            surahsAr.forEach((name, index) => {
+                let opt = document.createElement('option');
+                opt.value = index + 1;
+                opt.textContent = `${index + 1}. سورة ${name}`;
+                select.appendChild(opt);
+            });
+        }
+        initSurahList();
+
+        let playlist = [];
+        let currentIndex = 0;
+        let isPlaying = false;
+
+        const audio = document.getElementById('core-audio-player');
+        const playPauseBtn = document.getElementById('play-pause-btn');
+        const seekBar = document.getElementById('seek-bar');
+        const timeDisplay = document.getElementById('time-display');
+
+        // محرك الكانفاس المصلح
+        const canvas = document.getElementById('bg-canvas');
+        const ctx = canvas.getContext('2d');
+        let currentEffect = 'space';
+        let effectData = [];
+        let waveAngle = 0;
+
+        function resizeCanvas() {
+            canvas.width = 360;
+            canvas.height = 640;
+        }
+        resizeCanvas();
+
+        function initEffectData() {
+            effectData = [];
+            if (currentEffect === 'space') {
+                for(let i=0; i<70; i++) {
+                    effectData.push({
+                        x: Math.random() * canvas.width,
+                        y: Math.random() * canvas.height,
+                        r: Math.random() * 1.8 + 0.4,
+                        alpha: Math.random(),
+                        speed: Math.random() * 0.015 + 0.005
+                    });
+                }
+            } else if (currentEffect === 'particles') {
+                for(let i=0; i<50; i++) {
+                    effectData.push({
+                        x: Math.random() * canvas.width,
+                        y: Math.random() * canvas.height,
+                        r: Math.random() * 3.5 + 1,
+                        speed: Math.random() * 0.4 + 0.2,
+                        fadeSpeed: Math.random() * 0.01 + 0.005,
+                        alpha: Math.random()
+                    });
+                }
+            }
+        }
+
+        function drawBackground() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            if (currentEffect === 'space') {
+                let grad = ctx.createRadialGradient(canvas.width/2, canvas.height/2, 10, canvas.width/2, canvas.height/2, 320);
+                grad.addColorStop(0, '#150c22');
+                grad.addColorStop(1, '#08040d');
+                ctx.fillStyle = grad;
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+                effectData.forEach(p => {
+                    p.alpha += p.speed;
+                    if(p.alpha > 1 || p.alpha < 0) p.speed = -p.speed;
+                    ctx.fillStyle = `rgba(255, 255, 255, ${Math.abs(p.alpha)})`;
+                    ctx.beginPath();
+                    ctx.arc(p.x, p.y, p.r, 0, Math.PI*2);
+                    ctx.fill();
+                });
+
+            } else if (currentEffect === 'particles') {
+                ctx.fillStyle = '#0a0d09';
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+                effectData.forEach(p => {
+                    p.y -= p.speed;
+                    p.alpha += p.fadeSpeed;
+                    if(p.alpha > 1 || p.alpha < 0) p.fadeSpeed = -p.fadeSpeed;
+                    if(p.y < -10) {
+                        p.y = canvas.height + 10;
+                        p.x = Math.random() * canvas.width;
+                    }
+                    ctx.fillStyle = `rgba(212, 175, 55, ${Math.abs(p.alpha)})`;
+                    ctx.beginPath();
+                    ctx.arc(p.x, p.y, p.r, 0, Math.PI*2);
+                    ctx.fill();
+                });
+
+            } else if (currentEffect === 'waves') {
+                ctx.fillStyle = '#040b11';
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+                waveAngle += 0.015;
+                for(let j=0; j<4; j++) {
+                    ctx.strokeStyle = `rgba(76, 209, 55, ${0.2 - (j * 0.04)})`;
+                    ctx.lineWidth = 2.5;
+                    ctx.beginPath();
+                    let baseY = (canvas.height / 2) - 40 + (j * 30);
+                    
+                    for(let x=0; x<=canvas.width; x+=5) {
+                        let y = baseY + Math.sin(x * 0.015 + waveAngle + (j * 0.8)) * 35;
+                        if(x===0) ctx.moveTo(x, y);
+                        else ctx.lineTo(x, y);
+                    }
+                    ctx.stroke();
+                }
+            }
+
+            requestAnimationFrame(drawBackground);
+        }
+
+        document.getElementById('background-effect-select').addEventListener('change', (e) => {
+            currentEffect = e.target.value;
+            initEffectData();
+        });
+
+        initEffectData();
+        drawBackground();
+
+        function pad(num, size) {
+            let s = num + "";
+            while (s.length < size) s = "0" + s;
+            return s;
+        }
+
+        function formatTime(seconds) {
+            let min = Math.floor(seconds / 60);
+            let sec = Math.floor(seconds % 60);
+            return pad(min, 2) + ":" + pad(sec, 2);
+        }
+
+        document.getElementById('generate-btn').addEventListener('click', async () => {
+            const surah = document.getElementById('surah-select').value;
+            const from = parseInt(document.getElementById('verse-from').value);
+            const to = parseInt(document.getElementById('verse-to').value);
+            const reciter = document.getElementById('reciter-select').value;
+            const status = document.getElementById('status-msg');
+            const paragraphContainer = document.getElementById('quran-paragraph');
+
+            audio.pause();
+            audio.src = "";
+            playlist = [];
+            currentIndex = 0;
+            seekBar.value = 0;
+
+            status.textContent = "جاري دمج التلاوة وتجهيز الطبقة البصرية...";
+            paragraphContainer.innerHTML = "يرجى الانتظار ثوانٍ معدودة...";
+
+            try {
+                const textRes = await fetch(`https://api.alquran.cloud/v1/surah/${surah}/quran-uthmani`);
+                const textData = await textRes.json();
+                
+                paragraphContainer.innerHTML = "";
+                const cacheBuster = new Date().getTime();
+
+                for (let i = from; i <= to; i++) {
+                    const ayahText = textData.data.ayahs[i - 1].text;
+                    const surahPad = pad(surah, 3);
+                    const ayahPad = pad(i, 3);
+                    const audioUrl = `https://www.everyayah.com/data/${reciter}/${surahPad}${ayahPad}.mp3?v=${cacheBuster}`;
+                    const arNumber = Number(i).toLocaleString('ar-EG');
+
+                    const ayahSpan = document.createElement('span');
+                    ayahSpan.id = `ayah-span-${i}`;
+                    ayahSpan.className = "normal-ayah";
+                    // تم تعديل السطر هنا لحذف النص الغريب تماماً وإرجاع الترقيم النظيف
+                    ayahSpan.innerHTML = ` ${ayahText} ﴿${arNumber}﴾ `;
+                    paragraphContainer.appendChild(ayahSpan);
+
+                    playlist.push({
+                        number: i,
+                        audio: audioUrl
+                    });
+                }
+
+                if (playlist.length > 0) {
+                    status.textContent = "الخلفية الحية والمقطع جاهزان!";
+                    loadAndPlayTrack(0);
+                }
+
+            } catch (err) {
+                console.error(err);
+                status.textContent = "حدث خطأ في جلب البيانات.";
+                paragraphContainer.textContent = "تأكد من مطابقة أرقام الآيات للسورة المحددة.";
+            }
+        });
+
+        function loadAndPlayTrack(index) {
+            if (index >= playlist.length || index < 0) {
+                statusEnd();
+                return;
+            }
+
+            currentIndex = index;
+            const track = playlist[currentIndex];
+
+            document.querySelectorAll('#quran-paragraph span').forEach(span => span.className = "normal-ayah");
+            const currentSpan = document.getElementById(`ayah-span-${track.number}`);
+            if (currentSpan) {
+                currentSpan.className = "active-ayah";
+                currentSpan.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            }
+
+            audio.src = track.audio;
+            audio.load();
+            audio.play().then(() => {
+                isPlaying = true;
+                playPauseBtn.innerHTML = '<i class="fas fa-pause"></i>';
+            }).catch(e => console.log(e));
+        }
+
+        function statusEnd() {
+            audio.pause();
+            isPlaying = false;
+            playPauseBtn.innerHTML = '<i class="fas fa-play"></i>';
+            document.getElementById('status-msg').textContent = "اكتمل تشغيل المقطع.";
+        }
+
+        audio.addEventListener('ended', () => {
+            loadAndPlayTrack(currentIndex + 1);
+        });
+
+        audio.addEventListener('timeupdate', () => {
+            if(!audio.duration) return;
+            
+            let segmentWeight = 100 / playlist.length;
+            let currentProgressInSegment = (audio.currentTime / audio.duration) * segmentWeight;
+            let totalProgress = (currentIndex * segmentWeight) + currentProgressInSegment;
+
+            seekBar.value = totalProgress;
+
+            let virtualCurrentTime = (currentIndex * 6) + audio.currentTime;
+            let virtualTotalTime = playlist.length * 6;
+            
+            timeDisplay.textContent = `${formatTime(virtualCurrentTime)} / ${formatTime(virtualTotalTime)}`;
+        });
+
+        seekBar.addEventListener('input', () => {
+            let value = parseFloat(seekBar.value);
+            let segmentWeight = 100 / playlist.length;
+            
+            let targetIndex = Math.floor(value / segmentWeight);
+            if(targetIndex >= playlist.length) targetIndex = playlist.length - 1;
+
+            if (targetIndex !== currentIndex) {
+                loadAndPlayTrack(targetIndex);
+            } else {
+                let relativePercent = (value % segmentWeight) / segmentWeight;
+                if(audio.duration) {
+                    audio.currentTime = relativePercent * audio.duration;
+                }
+            }
+        });
+
+        playPauseBtn.addEventListener('click', () => {
+            if (audio.paused) {
+                audio.play();
+                isPlaying = true;
+                playPauseBtn.innerHTML = '<i class="fas fa-pause"></i>';
+            } else {
+                audio.pause();
+                isPlaying = false;
+                playPauseBtn.innerHTML = '<i class="fas fa-play"></i>';
+            }
+        });
+    </script>
+</body>
+</html>
